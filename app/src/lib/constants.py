@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 DETECTION_IMAGE_W = 512
 DETECTION_IMAGE_H = 512
@@ -23,3 +24,8 @@ PLATE_SQUARE = np.array([
     [0, 63],
     [63, 0],
     [63, 63]], dtype='float32')
+
+ABS_BASE_FOLDER = '/home/user/parking_zoning/app/src'
+DEBUG_FOLDER = os.path.join(ABS_BASE_FOLDER, 'debug')
+MODELS_FOLDER = os.path.join(ABS_BASE_FOLDER, 'models')
+

@@ -1,7 +1,10 @@
+import os.path
+
 import cv2
 import numpy as np
 import random
-from src import constants
+import constants
+import json
 
 
 def bbox_iou_d(box1, box2, x1y1x2y2=True):
@@ -30,6 +33,7 @@ def bbox_iou_d(box1, box2, x1y1x2y2=True):
 
     return iou
 
+
 def bbox_iou_np(box1, box2, x1y1x2y2=True):
     if not x1y1x2y2:
 
@@ -56,6 +60,7 @@ def bbox_iou_np(box1, box2, x1y1x2y2=True):
 
     return iou
 
+
 def nms_d(predictions, conf_thres=0.2, nms_thres=0.7, include_conf=False):
     filter_mask = (predictions[:, -1] >= conf_thres)
     predictions = predictions[filter_mask]
@@ -78,6 +83,8 @@ def nms_d(predictions, conf_thres=0.2, nms_thres=0.7, include_conf=False):
         predictions = predictions[ious < nms_thres]
 
     return np.stack(output)
+
+
 def nms_np(predictions, conf_thres=0.2, nms_thres=0.2, include_conf=False):
     filter_mask = (predictions[:, -1] >= conf_thres)
     predictions = predictions[filter_mask]
@@ -121,3 +128,42 @@ def preprocess_image_recognizer(img, box):
         return np.ascontiguousarray(
             np.stack([plate_img]).astype(np.float32).transpose(
                 constants.RECOGNIZER_IMG_CONFIGURATION) / constants.PIXEL_MAX_VALUE)
+
+
+def draw_zones(image, parking_slots):
+    for slot in parking_slots:
+        slot_id = slot['slot_id']
+        points = np.array(slot['points']).astype(int)
+
+        tl = points[0]
+        bl = points[1]
+        br = points[2]
+        tr = points[3]
+        cv2.circle(image, tl, radius=2, color=(255, 0, 0), thickness=3)
+        cv2.circle(image, bl, radius=2, color=(255, 0, 0), thickness=3)
+        cv2.circle(image, br, radius=2, color=(255, 0, 0), thickness=3)
+        cv2.circle(image, tr, radius=2, color=(255, 0, 0), thickness=3)
+        cv2.line(image, tl, bl, (0, 255, 0), thickness=2)
+        cv2.line(image, bl, br, (0, 255, 0), thickness=2)
+        cv2.line(image, br, tr, (0, 255, 0), thickness=2)
+        cv2.line(image, tr, tl, (0, 255, 0), thickness=2)
+
+        color = (255, 255, 255)
+        fontScale = 0.7
+        thickness = 5
+        in_is = f'SLOT-ID: {slot_id}'
+        point = (bl[0], bl[1] + 15)
+        cv2.putText(image, in_is, point, cv2.FONT_HERSHEY_SIMPLEX, fontScale, color)
+
+    return image
+
+
+if __name__ == '__main__':
+    image_path = '/home/user/parking_zoning/debug/20220627_133111.png'
+    config = '/home/user/parking_zoning/dev/config.json'
+
+    with open(config, 'r') as f:
+        slots = json.loads(f.read())['object_1'][0]['parking_slots']
+    image = cv2.imread(image_path)
+    drawn_image = draw_zones(image, slots)
+    cv2.imwrite(f"/home/user/parking_zoning/debug/drawn_{os.path.basename(image_path)}", drawn_image)
