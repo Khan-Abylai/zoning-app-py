@@ -10,11 +10,19 @@ import requests
 import tensorrt as trt
 import tqdm
 from PIL import Image
+from lib import constants, license_plate
+# try:
+from lib.point import Points
+from lib.utils import nms_np
 from numba import cuda
 from requests.auth import HTTPDigestAuth
 from scipy.special import expit as sigmoid
-import constants
-from utils import nms_np, preprocess_image_recognizer
+
+
+# except:
+#     from point import Points
+#     import constants, license_plate
+#     from utils import nms_np
 
 
 class DetectionEngine(object):
@@ -23,6 +31,8 @@ class DetectionEngine(object):
     def __init__(self, weights_name, img_w=512, img_h=512, plate_grid_size=16, car_grid_size=64, create_engine=False):
         self.img_w = 512
         self.img_h = 512
+        self.detection_threshold = 0.7
+        self.nms_threshold = 0.4
         self.plate_attr = 13
         self.car_attr = 5
         self.coordinate_sizes = [self.plate_attr, self.car_attr]
@@ -157,6 +167,57 @@ class DetectionEngine(object):
 
             engine = builder.build_engine(network, builder_config)
             return engine
+
+    def make_prediction(self, image, camera_ip, object_id):
+        img_w, img_h = constants.DETECTION_IMAGE_W, constants.DETECTION_IMAGE_H
+        model_image = cv2.resize(image, (img_h, img_w))
+        model_image = model_image.transpose((2, 0, 1))
+        model_image = 2 * (model_image / 255.0 - 0.5)
+        model_image = model_image.astype(np.float32)
+        model_image = np.ascontiguousarray(model_image)
+        t1 = time.time()
+        plate_output = self.predict(model_image)
+        t2 = time.time()
+        rx = float(image.shape[1]) / img_w
+        ry = float(image.shape[0]) / img_h
+        plates = nms_np(plate_output[0], conf_thres=self.detection_threshold, nms_thres=self.nms_threshold,
+                        include_conf=True)
+        license_plates = []
+        if len(plates) > 0:
+            plates[..., [4, 6, 8, 10]] += plates[..., [0]]
+            plates[..., [5, 7, 9, 11]] += plates[..., [1]]
+            ind = np.argsort(plates[..., -1])
+
+            for plate, ind_ in zip(plates, ind):
+                box = np.copy(plate[:12]).reshape(6, 2)
+                prob = plate[-1]
+                if prob >= 0.75:
+                    box = np.copy(plate[:12]).reshape(6, 2)
+
+                    expand_x = 3
+                    expand_y = 3
+
+                    plate_w = int(box[1][0] * rx) + expand_x * 2
+                    plate_h = int(box[1][1] * ry) + expand_y * 2
+
+                    center_point = np.array([box[0][0] * rx, box[0][1] * ry], dtype=np.float32)
+
+                    plate_box = np.array([(int((plate[4]) * rx) - expand_x, int((plate[5]) * ry) - expand_x),
+                                          (int((plate[6] * rx)) - expand_x, int((plate[7] * ry)) + expand_y),
+                                          (int((plate[8] * rx)) + expand_x, int((plate[9] * ry)) - expand_y),
+                                          (int((plate[10] * rx)) + expand_x, int((plate[11] * ry)) + expand_y)],
+                                         dtype=np.float32)
+
+                    RECT_LP_COORS = np.array([[0, 0], [0, plate_h], [plate_w, 0], [plate_w, plate_h]], dtype=np.float32)
+                    transformation_matrix = cv2.getPerspectiveTransform(plate_box, RECT_LP_COORS)
+
+                    lp_img = cv2.warpPerspective(image, transformation_matrix, (plate_w, plate_h))
+                    points = Points(
+                        plate_box, center_point
+                    )
+                    lp = license_plate.LicensePlate(camera_ip, object_id, plate_h, plate_w, lp_img, points)
+                    license_plates.append(lp)
+        return license_plates
 
 
 if __name__ == '__main__':

@@ -1,10 +1,9 @@
+import json
 import os.path
 
 import cv2
 import numpy as np
-import random
-import constants
-import json
+from lib import constants
 
 
 def bbox_iou_d(box1, box2, x1y1x2y2=True):
@@ -156,7 +155,7 @@ def draw_zones(image, parking_slots):
 
 
 if __name__ == '__main__':
-    image_path = '/home/user/parking_zoning/app/src/debug/zone.jpg'
+    image_path = '/home/user/parking_zoning/app/src/debug/image.jpg'
     config = '/home/user/parking_zoning/dev/config.json'
 
     with open(config, 'r') as f:

@@ -2,35 +2,43 @@ import io
 import os
 import re
 import time
-from threading import Thread
-from queue import Queue
 from datetime import datetime
+from queue import Queue
+from threading import Thread
 
 import nanoid
 import requests
 from PIL import Image
 from requests.auth import HTTPDigestAuth
-import constants
+
+try:
+    import constants
+except:
+    from lib import constants
 
 
 class CameraWorker(Thread):
-    def __init__(self, worker_config, waiting_time=1, timeout=5, n_snapshots=5):
+    def __init__(self, worker_config, facility_id, waiting_time=10, timeout=5, n_snapshots=4):
         Thread.__init__(self)
         self.__ip = worker_config.get_ip()
         self.__queue = Queue()
         self.__url = worker_config.get_snapshot_url()
-        self.__camera_user = worker_config.get_user()
-        self.__camera_pass = worker_config.get_pass()
+        self.__camera_user = worker_config.get_username()
+        self.__camera_pass = worker_config.get_password()
         self.__waiting_time = waiting_time
         self.__worker_config = worker_config
         self.__request_timeout = timeout
         self.__num_snapshots = n_snapshots
+        self.__facility_id = facility_id
 
     def get_size_of_queue(self):
         return self.__queue.qsize()
 
     def get_worker_config(self):
         return self.__worker_config
+
+    def get_facility_id(self):
+        return self.__facility_id
 
     def run(self):
         if self.__url is not None:
@@ -54,7 +62,7 @@ class CameraWorker(Thread):
                     except Exception as E:
                         print(f"Error during take snapshot:{E}")
                         continue
-                self.__queue.put({snapshots})
+                self.__queue.put(snapshots)
                 time.sleep(self.__waiting_time)
         else:
             print(f"Snapshot url was set incorrect:{self.__url}")
