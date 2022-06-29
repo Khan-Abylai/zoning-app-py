@@ -23,8 +23,8 @@ def bbox_iou_d(box1, box2, x1y1x2y2=True):
     inter_rect_x2 = np.minimum(b1_x2, b2_x2)
     inter_rect_y2 = np.minimum(b1_y2, b2_y2)
 
-    inter_area = np.clip(inter_rect_x2 - inter_rect_x1 + 1, 0, None) * \
-                 np.clip(inter_rect_y2 - inter_rect_y1 + 1, 0, None)
+    inter_area = np.clip(inter_rect_x2 - inter_rect_x1 + 1, 0, None) * np.clip(inter_rect_y2 - inter_rect_y1 + 1, 0,
+                                                                               None)
 
     b1_area = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1)
     b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
@@ -50,8 +50,8 @@ def bbox_iou_np(box1, box2, x1y1x2y2=True):
     inter_rect_x2 = np.minimum(b1_x2, b2_x2)
     inter_rect_y2 = np.minimum(b1_y2, b2_y2)
 
-    inter_area = np.clip(inter_rect_x2 - inter_rect_x1 + 1, 0, None) * \
-                 np.clip(inter_rect_y2 - inter_rect_y1 + 1, 0, None)
+    inter_area = np.clip(inter_rect_x2 - inter_rect_x1 + 1, 0, None) * np.clip(inter_rect_y2 - inter_rect_y1 + 1, 0,
+                                                                               None)
 
     b1_area = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1)
     b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
@@ -85,7 +85,7 @@ def nms_d(predictions, conf_thres=0.2, nms_thres=0.7, include_conf=False):
     return np.stack(output)
 
 
-def nms_np(predictions, conf_thres=0.2, nms_thres=0.2, include_conf=False):
+def nms_np(predictions, conf_thres=0.2, nms_thres=0.4, include_conf=False):
     filter_mask = (predictions[:, -1] >= conf_thres)
     predictions = predictions[filter_mask]
 
@@ -114,20 +114,17 @@ def preprocess_image_recognizer(img, box):
     if 1.5 > ratio > 0.8:
         plate_img = cv2.warpPerspective(img, cv2.getPerspectiveTransform(box, constants.PLATE_SQUARE),
                                         (constants.RECOGNIZER_IMAGE_W // 2, constants.RECOGNIZER_IMAGE_H * 2))
-        padding = np.ones((constants.RECOGNIZER_IMAGE_H,
-                           constants.RECOGNIZER_IMAGE_W // 2, 3), dtype=np.uint8) * constants.PIXEL_MAX_VALUE
+        padding = np.ones((constants.RECOGNIZER_IMAGE_H, constants.RECOGNIZER_IMAGE_W // 2, 3),
+                          dtype=np.uint8) * constants.PIXEL_MAX_VALUE
 
-        result = np.concatenate((plate_img[:constants.RECOGNIZER_IMAGE_H], padding), axis=1).astype(
-            np.uint8)
-        return np.ascontiguousarray(
-            np.stack(result).astype(np.float32).transpose(
-                constants.RECOGNIZER_IMG_CONFIGURATION) / constants.PIXEL_MAX_VALUE)
+        result = np.concatenate((plate_img[:constants.RECOGNIZER_IMAGE_H], padding), axis=1).astype(np.uint8)
+        return np.ascontiguousarray(np.stack(result).astype(np.float32).transpose(
+            constants.RECOGNIZER_IMG_CONFIGURATION) / constants.PIXEL_MAX_VALUE)
     else:
         plate_img = cv2.warpPerspective(img, cv2.getPerspectiveTransform(box[2:], constants.PLATE_RECT),
                                         (constants.RECOGNIZER_IMAGE_W, constants.RECOGNIZER_IMAGE_H))
-        return np.ascontiguousarray(
-            np.stack([plate_img]).astype(np.float32).transpose(
-                constants.RECOGNIZER_IMG_CONFIGURATION) / constants.PIXEL_MAX_VALUE)
+        return np.ascontiguousarray(np.stack([plate_img]).astype(np.float32).transpose(
+            constants.RECOGNIZER_IMG_CONFIGURATION) / constants.PIXEL_MAX_VALUE)
 
 
 def draw_zones(image, parking_slots):
@@ -159,11 +156,11 @@ def draw_zones(image, parking_slots):
 
 
 if __name__ == '__main__':
-    image_path = '/home/user/parking_zoning/debug/20220627_133111.png'
+    image_path = '/home/user/parking_zoning/app/src/debug/zone.jpg'
     config = '/home/user/parking_zoning/dev/config.json'
 
     with open(config, 'r') as f:
         slots = json.loads(f.read())['object_1'][0]['parking_slots']
     image = cv2.imread(image_path)
     drawn_image = draw_zones(image, slots)
-    cv2.imwrite(f"/home/user/parking_zoning/debug/drawn_{os.path.basename(image_path)}", drawn_image)
+    cv2.imwrite(f"/home/user/parking_zoning/app/src/debug/drawn_{os.path.basename(image_path)}", drawn_image)

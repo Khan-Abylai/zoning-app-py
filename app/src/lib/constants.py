@@ -12,20 +12,12 @@ IMG_C = 3
 
 DETECTION_IMG_CONFIGURATION = (2, 0, 1)
 RECOGNIZER_IMG_CONFIGURATION = (0, 3, 1, 2)
+SQUARE_LP_RATIO = 2.6
+PLATE_RECT = np.array([[0, 0], [0, 32], [127, 0], [127, 31]], dtype='float32')
 
-PLATE_RECT = np.array([
-    [0, 0],
-    [0, 32],
-    [127, 0],
-    [127, 31]], dtype='float32')
-
-PLATE_SQUARE = np.array([
-    [0, 0],
-    [0, 63],
-    [63, 0],
-    [63, 63]], dtype='float32')
+PLATE_SQUARE = np.array([[0, 0], [0, 63], [63, 0], [63, 63]], dtype='float32')
 
 ABS_BASE_FOLDER = '/home/user/parking_zoning/app/src'
 DEBUG_FOLDER = os.path.join(ABS_BASE_FOLDER, 'debug')
 MODELS_FOLDER = os.path.join(ABS_BASE_FOLDER, 'models')
-
+STORAGE_FOLDER = os.path.join(ABS_BASE_FOLDER, 'storage')

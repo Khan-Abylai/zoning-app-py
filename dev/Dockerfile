@@ -45,7 +45,7 @@ RUN ( \
   && mkdir /run/sshd
 
 RUN curl https://bootstrap.pypa.io/pip/3.6/get-pip.py -o get-pip.py && python3 get-pip.py --force-reinstall
-RUN sudo pip3 install --no-cache-dir setuptools && pip3 install --no-cache-dir opencv-python==4.0.0.21 tqdm llvmlite numba scipy scikit-build numpy scipy imgaug scikit-image scikit-learn albumentations jupyterlab tqdm matplotlib pandas
+RUN sudo pip3 install --no-cache-dir setuptools && pip3 install --no-cache-dir opencv-python==4.0.0.21 tqdm llvmlite numba scipy scikit-build numpy scipy imgaug scikit-image scikit-learn albumentations jupyterlab tqdm matplotlib pandas nanoid
 
 # Minimize image size
 RUN (apt-get autoremove -y; \
