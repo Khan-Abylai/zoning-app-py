@@ -26,7 +26,7 @@ import warnings
 warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
 warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 
-
+# TODO: union intersection occupation for parking slots
 # TODO: package sender in queue
 # TODO: send image with occupied and free zones
 
