@@ -18,7 +18,7 @@ except:
 
 
 class CameraWorker(Thread):
-    def __init__(self, worker_config, facility_id, waiting_time=10, timeout=5, n_snapshots=4):
+    def __init__(self, worker_config, facility_id, waiting_time=5, timeout=5, n_snapshots=5):
         Thread.__init__(self)
         self.__ip = worker_config.get_ip()
         self.__queue = Queue()

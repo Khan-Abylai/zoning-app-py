@@ -1,6 +1,16 @@
 import numpy as np
 
 
+class BBox(object):
+    def __init__(self, pts):
+        self.p1 = Point(pts[:2])
+        self.p2 = Point(pts[2:])
+        self.area = (self.p2.get_y() - self.p1.get_y()) * (self.p2.get_x() - self.p1.get_x())
+
+    def get_area(self):
+        return self.area
+
+
 class Point(object):
     def __init__(self, point, name=None):
         self.__x = int(point[0])

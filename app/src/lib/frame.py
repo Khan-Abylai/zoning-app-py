@@ -91,7 +91,8 @@ class FrameData(object):
                 else:
                     use_this_label = False if exceeds > 1 else True
                 found_license_plates.sort(key=lambda x: x.get_plate_label_prob(), reverse=True)
-                result_license_plates.append(
-                    found_license_plates[0]
-                )
+                if use_this_label:
+                    result_license_plates.append(
+                        found_license_plates[0]
+                    )
         return result_license_plates
