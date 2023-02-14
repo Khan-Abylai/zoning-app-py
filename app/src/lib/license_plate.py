@@ -7,7 +7,8 @@ import nanoid
 import numpy as np
 from lib import constants
 from lib.point import Point, BBox
-
+# import constants
+# from point import Point, BBox
 
 class LicensePlate(object):
     def __init__(self, camera_ip, object_id, img_h, img_w, lp_img, points):
@@ -31,10 +32,10 @@ class LicensePlate(object):
     def get_car_bbox(self):
         return self.__car_box
 
-    def set_car_bbox(self, car_bbox):
-        mask = [True if self.__center_point.get_x() in range(car_box.p1.get_x(),
-                                                             car_box.p2.get_x()) and self.__center_point.get_y() in range(
-            car_box.p1.get_y(), car_box.p2.get_y()) else False for car_box in car_bbox]
+    def set_car_bbox(self, car_bbox, lower_ratio, upper_ratio):
+        mask = [True if self.__center_point.get_x() in range(car_box.p1.get_x(), car_box.p2.get_x()) and
+                self.__center_point.get_y() in range(car_box.p1.get_y(), car_box.p2.get_y())
+                else False for car_box in car_bbox]
 
         car_bbox = np.array(car_bbox)[mask]
 
@@ -44,7 +45,9 @@ class LicensePlate(object):
             self.__car_box = car_bbox[0]
         else:
             ls = [pt for pt in car_bbox]
-            sorted(ls, key=lambda x: x.get_area(), reverse=True)
+            sorted(ls, key=lambda x: x.get_area()
+                   if (x.p2.get_x()-x.p1.get_x())/(x.p2.get_y()-x.p1.get_y()) > upper_ratio and
+                   (x.p2.get_x() - x.p1.get_x()) / (x.p2.get_y() - x.p1.get_y()) < lower_ratio else 0, reverse=True)
             self.__car_box = ls[0]
 
     def get_camera_ip(self):

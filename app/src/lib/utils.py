@@ -4,7 +4,7 @@ import os.path
 import cv2
 import numpy as np
 from lib import constants
-
+# import constants
 
 def bbox_iou_d(box1, box2, x1y1x2y2=True):
     if not x1y1x2y2:

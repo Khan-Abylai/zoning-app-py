@@ -226,11 +226,30 @@ class RecognizerEngine(object):
 
 
 if __name__ == '__main__':
+    correct = 0
+    tot = 1
     recognizer_engine = RecognizerEngine(weights_name='recognizer_weights.np')
-    ls = glob(os.path.join(constants.STORAGE_FOLDER, "*.jpg"))
-    for image_path in ls:
-        image = cv2.imread(image_path)
-        resized_image = cv2.resize(image, (128, 32))
-        preprocessed_image = np.ascontiguousarray(
-            np.stack([resized_image]).astype(np.float32).transpose((0, 3, 1, 2)) / 255)
-        result = recognizer_engine.predict(preprocessed_image)
+    # ls = glob(os.path.join(constants.STORAGE_FOLDER, "*.jpg"))
+    ls = glob(os.path.join("/home/user/data/", "*"))
+    for l in ls:
+        images = glob(os.path.join(l, "*_plate.jpg"))
+        for image_path in images:
+            tot += 1
+            image_name = image_path.rsplit("/", 1)[1]
+            plate_name = image_path.replace(image_name, "plate.txt")
+            f = open(plate_name, "r")
+            lp = f.read().replace(" ", "").replace("-", "").lower()
+            image = cv2.imread(image_path)
+            resized_image = cv2.resize(image, (128, 32))
+            preprocessed_image = np.ascontiguousarray(
+                np.stack([resized_image]).astype(np.float32).transpose((0, 3, 1, 2)) / 255)
+            result = recognizer_engine.predict(preprocessed_image)
+            color = (0, 0, 255)
+            fontScale = 0.5
+            cv2.putText(image, result[0][0], (20, 20), cv2.FONT_HERSHEY_SIMPLEX, fontScale, color)
+            cv2.imwrite(os.path.join(os.path.dirname(image_path),
+                        os.path.basename(image_path).replace('.', 'found.')), image)
+            if result[0][0].lower() == lp:
+                correct += 1
+    print(correct)
+    print(tot)

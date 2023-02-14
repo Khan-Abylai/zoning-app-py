@@ -10,10 +10,18 @@ import requests
 import tensorrt as trt
 import tqdm
 from PIL import Image
+
+from glob import glob
+
 from lib import constants, license_plate
 # try:
 from lib.point import Points
 from lib.utils import nms_np
+# import constants
+# import license_plate
+# from point import Points
+# from utils import nms_np
+
 from numba import cuda
 from requests.auth import HTTPDigestAuth
 from scipy.special import expit as sigmoid
@@ -223,97 +231,120 @@ class DetectionEngine(object):
 if __name__ == '__main__':
 
     det_mode = 'snapshot'  # iamge
-    detection_engine = DetectionEngine(weights_name='detection_weights_cvt.np')
+    detection_engine = DetectionEngine(weights_name='detection_weights_kz.np')
     if det_mode == 'image':
-        image_path = os.path.join(constants.DEBUG_FOLDER, 'image.png')
-        if os.path.exists(image_path):
-            img_w, img_h = constants.DETECTION_IMAGE_W, constants.DETECTION_IMAGE_H
-            image = cv2.imread(image_path)
-            image = cv2.resize(image, (1920, 1080))
-            model_image = cv2.resize(image, (img_h, img_w))
-            model_image = model_image.transpose((2, 0, 1))
-            model_image = 2 * (model_image / 255.0 - 0.5)
-            model_image = model_image.astype(np.float32)
-            model_image = np.ascontiguousarray(model_image)
-            t1 = time.time()
-            plate_output = detection_engine.predict(model_image)
-            t2 = time.time()
-            print(f"file:{image_path} exec time: {t2 - t1}")
-            rx = float(image.shape[1]) / img_w
-            ry = float(image.shape[0]) / img_h
-            plates = nms_np(plate_output[0], conf_thres=0.7, include_conf=True)
-            if len(plates) > 0:
-                plates[..., [4, 6, 8, 10]] += plates[..., [0]]
-                plates[..., [5, 7, 9, 11]] += plates[..., [1]]
-                ind = np.argsort(plates[..., -1])
+        root = "/home/user/data/"
+        result = []
+        all_folders = glob(os.path.join(root, "*"))
+        for folder in all_folders:
+            images = glob(os.path.join(folder, "*.jpg"))
+            for image_path in images:
+                if os.path.exists(image_path):
+                    img_w, img_h = constants.DETECTION_IMAGE_W, constants.DETECTION_IMAGE_H
+                    image = cv2.imread(image_path)
+                    image = cv2.resize(image, (1920, 1080))
+                    model_image = cv2.resize(image, (img_h, img_w))
+                    model_image = model_image.transpose((2, 0, 1))
+                    model_image = 2 * (model_image / 255.0 - 0.5)
+                    model_image = model_image.astype(np.float32)
+                    model_image = np.ascontiguousarray(model_image)
+                    t1 = time.time()
+                    plate_output = detection_engine.predict(model_image)
+                    t2 = time.time()
+                    print(f"file:{image_path} exec time: {t2 - t1}")
+                    rx = float(image.shape[1]) / img_w
+                    ry = float(image.shape[0]) / img_h
+                    plates = nms_np(plate_output[0], conf_thres=0.7, include_conf=True)
+                    if len(plates) > 0:
+                        plates[..., [4, 6, 8, 10]] += plates[..., [0]]
+                        plates[..., [5, 7, 9, 11]] += plates[..., [1]]
+                        ind = np.argsort(plates[..., -1])
 
-                for plate, ind_ in zip(plates, ind):
-                    box = np.copy(plate[:12]).reshape(6, 2)
-                    prob = plate[-1]
-                    if prob >= 0.8:
-                        plate_box = np.array(
-                            [(int((plate[4]) * rx), int((plate[5]) * ry)), (int((plate[6]) * rx), int((plate[7]) * ry)),
-                             (int((plate[8]) * rx), int((plate[9]) * ry)),
-                             (int((plate[10]) * rx), int((plate[11]) * ry))], dtype=np.float32)
+                        for plate, ind_ in zip(plates, ind):
+                            box = np.copy(plate[:12]).reshape(6, 2)
+                            prob = plate[-1]
+                            if prob >= 0.8:
+                                plate_box = np.array(
+                                    [(int((plate[4]) * rx), int((plate[5]) * ry)), (int((plate[6]) * rx), int((plate[7]) * ry)),
+                                     (int((plate[8]) * rx), int((plate[9]) * ry)),
+                                     (int((plate[10]) * rx), int((plate[11]) * ry))], dtype=np.float32)
 
-                        cv2.circle(image, (int(plate[0] * rx), int(plate[1] * ry)), 2, (0, 255, 255), -1)
-                        cv2.circle(image, (int((plate[4]) * rx), int((plate[5]) * ry)), 2, (0, 255, 0), -1)
-                        cv2.circle(image, (int((plate[6]) * rx), int((plate[7]) * ry)), 2, (0, 255, 0), -1)
-                        cv2.circle(image, (int((plate[8]) * rx), int((plate[9]) * ry)), 2, (0, 255, 0), -1)
-                        cv2.circle(image, (int((plate[10]) * rx), int((plate[11]) * ry)), 2, (0, 255, 0), -1)
+                                cv2.circle(image, (int(plate[0] * rx), int(plate[1] * ry)), 2, (0, 255, 255), -1)
+                                cv2.circle(image, (int((plate[4]) * rx), int((plate[5]) * ry)), 2, (0, 255, 0), -1)
+                                cv2.circle(image, (int((plate[6]) * rx), int((plate[7]) * ry)), 2, (0, 255, 0), -1)
+                                cv2.circle(image, (int((plate[8]) * rx), int((plate[9]) * ry)), 2, (0, 255, 0), -1)
+                                cv2.circle(image, (int((plate[10]) * rx), int((plate[11]) * ry)), 2, (0, 255, 0), -1)
 
-                cv2.imwrite(
-                    os.path.join(os.path.dirname(image_path), os.path.basename(image_path).replace('.', '-detected.')),
-                    image)
+                        cv2.imwrite(
+                            os.path.join("/home/user/data/data_test/", os.path.basename(image_path).replace('.', '-detected.')),
+                            image)
     elif det_mode == 'snapshot':
         response = requests.get(url="http://172.27.14.171/cgi-bin/snapshot.cgi",
                                 auth=HTTPDigestAuth("admin", "campas123"), timeout=5)
         image = Image.open(io.BytesIO(response.content)).convert('RGB')
         image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         img_w, img_h = constants.DETECTION_IMAGE_W, constants.DETECTION_IMAGE_H
+        root = "/home/user/data/"
+        result = []
+        all_folders = glob(os.path.join(root, "*"))
         # image = cv2.imread(image_path)
-        image_path = os.path.join(constants.STORAGE_FOLDER,
-                                  re.sub("[^0-9a-zA-Z]+", "", nanoid.generate(size=20)) + '.jpg')
-        model_image = cv2.resize(image, (img_h, img_w))
-        model_image = model_image.transpose((2, 0, 1))
-        model_image = 2 * (model_image / 255.0 - 0.5)
-        model_image = model_image.astype(np.float32)
-        model_image = np.ascontiguousarray(model_image)
-        t1 = time.time()
-        plate_output = detection_engine.predict(model_image)
-        t2 = time.time()
-        print(f" exec time: {t2 - t1}")
-        rx = float(image.shape[1]) / img_w
-        ry = float(image.shape[0]) / img_h
-        plates = nms_np(plate_output[0], conf_thres=0.7, include_conf=True)
-        if len(plates) > 0:
-            plates[..., [4, 6, 8, 10]] += plates[..., [0]]
-            plates[..., [5, 7, 9, 11]] += plates[..., [1]]
-            ind = np.argsort(plates[..., -1])
+        # image_path = os.path.join(constants.STORAGE_FOLDER,
+        #                           re.sub("[^0-9a-zA-Z]+", "", nanoid.generate(size=20)) + '.jpg')
+        # model_image = cv2.resize(image, (img_h, img_w))
+        # model_image = model_image.transpose((2, 0, 1))
+        # model_image = 2 * (model_image / 255.0 - 0.5)
+        # model_image = model_image.astype(np.float32)
+        # model_image = np.ascontiguousarray(model_image)
+        # t1 = time.time()
+        # plate_output = detection_engine.predict(model_image)
+        # t2 = time.time()
+        for folder in all_folders:
+            images = glob(os.path.join(folder, "*.jpg"))
+            for image_path in images:
+                if os.path.exists(image_path):
+                    img_w, img_h = constants.DETECTION_IMAGE_W, constants.DETECTION_IMAGE_H
+                    image = cv2.imread(image_path)
+                    image = cv2.resize(image, (1920, 1080))
+                    model_image = cv2.resize(image, (img_h, img_w))
+                    model_image = model_image.transpose((2, 0, 1))
+                    model_image = 2 * (model_image / 255.0 - 0.5)
+                    model_image = model_image.astype(np.float32)
+                    model_image = np.ascontiguousarray(model_image)
+                    t1 = time.time()
+                    plate_output = detection_engine.predict(model_image)
+                    t2 = time.time()
+                    print(f" exec time: {t2 - t1}")
+                    rx = float(image.shape[1]) / img_w
+                    ry = float(image.shape[0]) / img_h
+                    plates = nms_np(plate_output[0], conf_thres=0.7, include_conf=True)
+                    if len(plates) > 0:
+                        plates[..., [4, 6, 8, 10]] += plates[..., [0]]
+                        plates[..., [5, 7, 9, 11]] += plates[..., [1]]
+                        ind = np.argsort(plates[..., -1])
 
-            for plate, ind_ in zip(plates, ind):
-                box = np.copy(plate[:12]).reshape(6, 2)
-                prob = plate[-1]
-                if prob >= 0.75:
-                    box = np.copy(plate[:12]).reshape(6, 2)
+                        for plate, ind_ in zip(plates, ind):
+                            box = np.copy(plate[:12]).reshape(6, 2)
+                            prob = plate[-1]
+                            if prob >= 0.75:
+                                box = np.copy(plate[:12]).reshape(6, 2)
 
-                    expand_x = 3
-                    expand_y = 3
+                                expand_x = 3
+                                expand_y = 3
 
-                    plate_w = int(box[1][0] * rx) + expand_x * 2
-                    plate_h = int(box[1][1] * ry) + expand_y * 2
+                                plate_w = int(box[1][0] * rx) + expand_x * 2
+                                plate_h = int(box[1][1] * ry) + expand_y * 2
 
-                    plate_box = np.array([(int((plate[4]) * rx) - expand_x, int((plate[5]) * ry) - expand_x),
-                                          (int((plate[6] * rx)) - expand_x, int((plate[7] * ry)) + expand_y),
-                                          (int((plate[8] * rx)) + expand_x, int((plate[9] * ry)) - expand_y),
-                                          (int((plate[10] * rx)) + expand_x, int((plate[11] * ry)) + expand_y)],
-                                         dtype=np.float32)
+                                plate_box = np.array([(int((plate[4]) * rx) - expand_x, int((plate[5]) * ry) - expand_x),
+                                                      (int((plate[6] * rx)) - expand_x, int((plate[7] * ry)) + expand_y),
+                                                      (int((plate[8] * rx)) + expand_x, int((plate[9] * ry)) - expand_y),
+                                                      (int((plate[10] * rx)) + expand_x, int((plate[11] * ry)) + expand_y)],
+                                                     dtype=np.float32)
 
-                    RECT_LP_COORS = np.array([[0, 0], [0, plate_h], [plate_w, 0], [plate_w, plate_h]], dtype=np.float32)
-                    transformation_matrix = cv2.getPerspectiveTransform(plate_box, RECT_LP_COORS)
-                    lp_img = cv2.warpPerspective(image, transformation_matrix, (plate_w, plate_h))
-                    cv2.imwrite(os.path.join(os.path.dirname(image_path),
-                                             os.path.basename(image_path).replace('.', f'-{ind_}_plate.')), lp_img)
-            cv2.imwrite(
-                os.path.join(os.path.dirname(image_path), os.path.basename(image_path).replace('.', '-detected.')),
-                image)
+                                RECT_LP_COORS = np.array([[0, 0], [0, plate_h], [plate_w, 0], [plate_w, plate_h]], dtype=np.float32)
+                                transformation_matrix = cv2.getPerspectiveTransform(plate_box, RECT_LP_COORS)
+                                lp_img = cv2.warpPerspective(image, transformation_matrix, (plate_w, plate_h))
+                                cv2.imwrite(os.path.join(os.path.dirname(image_path),
+                                                         os.path.basename(image_path).replace('.', f'-{ind_}_plate.')), lp_img)
+            # cv2.imwrite(
+            #     os.path.join(os.path.dirname(image_path), os.path.basename(image_path).replace('.', '-detected.')),
+            #     image)
