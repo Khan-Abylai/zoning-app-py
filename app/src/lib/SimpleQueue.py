@@ -76,7 +76,7 @@ class SimpleQueue(object):
                                     left_cars = {}
                                 entry["empty_slots"] = left_cars
                             send_url = "http://%s:8888/rest/parking-space/add" % (camera.get_result_send_ip())
-                            print([entry["lp2slot"]])
+                            # print([entry["lp2slot"]])
                             headers = {
                                 'Content-type': 'application/json',
                                 'Accept': 'application/json'

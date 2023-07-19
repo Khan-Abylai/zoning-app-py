@@ -5,4 +5,4 @@ xhost +local:docker && docker run -d -it --rm --cap-add sys_ptrace -p0.0.0.0:778
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v $HOME/.Xauthority:/root/.Xauthority \
         -v $XAUTHORITY:/tmp/.XAuthority -e XAUTHORITY=/tmp/.XAuthority \
-        doc.smartparking.kz/tensorrt_dev:tensorrt_dev
+        registry.infra.smartparking.kz/torch_trt:tensorrt_dev_test

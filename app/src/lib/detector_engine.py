@@ -111,7 +111,8 @@ class DetectionEngine(object):
             kernel_size = (3, 3)
             stride = (1, 1)
             padding = (1, 1)
-            channels = [8, 16, 32, 64, 128, 256, 512]
+            channels = [16, 32, 64, 128, 256]
+
             index = 0
 
             prev_layer = input_layer
@@ -152,10 +153,10 @@ class DetectionEngine(object):
                     activation = network.add_activation(bn.get_output(0), trt.ActivationType.RELU)
                     prev_layer = activation.get_output(0)
 
-                if i == 4 or i == 6:
+                if i == 4:
                     features.append(prev_layer)
 
-                if i < len(channels) - 1:
+                if i < 4:
                     pooling = network.add_pooling(prev_layer, trt.PoolingType.MAX, (2, 2))
                     pooling.stride = (2, 2)
                     prev_layer = pooling.get_output(0)
@@ -172,7 +173,6 @@ class DetectionEngine(object):
                                                      conv_biases)
 
                 network.mark_output(conv_layer.get_output(0))
-
             engine = builder.build_engine(network, builder_config)
             return engine
 

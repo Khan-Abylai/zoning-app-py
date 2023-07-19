@@ -51,7 +51,8 @@ class FrameData(object):
         return self.__facility_id
 
     def get_images(self):
-        return np.array([cv2.imread(x) for x in self.__snapshots_paths])
+        # return np.array([cv2.imread(x) for x in self.__snapshots_paths])
+        return np.array(self.__snapshots_paths)
 
     def get_camera_slots(self):
         return self.__camera_slots

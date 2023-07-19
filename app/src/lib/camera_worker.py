@@ -46,7 +46,8 @@ class CameraWorker(Thread):
         if self.__url is not None:
 
             j = 0
-            image_prev = None
+            # image_prev_path = "/home/user/parking_zoning/app/src/storage/10FhtAoHOGWXjCkpGdEi.jpg"
+            # image_prev = cv2.imread(image_prev_path)
             while True:
                 j += 1
                 snapshots = []
@@ -59,12 +60,18 @@ class CameraWorker(Thread):
                             image = Image.open(io.BytesIO(response.content))
                             # image_path = os.path.join(constants.STORAGE_FOLDER,
                             #                           re.sub("[^0-9a-zA-Z]+", "", nanoid.generate(size=20)) + '.jpg')
-                            image_path = os.path.join(constants.STORAGE_FOLDER, j, '.jpg')
+                            image_path = os.path.join(constants.STORAGE_FOLDER, r'{f}.jpg')
                             image.save(image_path)
-                            mse_bool = self.motion_detector(image, image_prev)
-                            image_prev = image
-                            if mse_bool == True:
-                                snapshots.append(image_path)
+                            image = cv2.imread(image_path)
+                            # mse_bool = self.motion_detector(image, image_prev)
+                            # image_prev = image
+                            # if mse_bool == True:
+                            #     snapshots.append(image_path)
+                            #     print("snapshot taken")
+                            snapshots.append(image_path)
+                            print("snapshot taken")
+                            # else:
+                            #     print("not taken")
                             now = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
                             print(f"Snapshot ({snapshot_idx}) taken from ip:{self.__ip} at:{now}")
                         else:
@@ -95,7 +102,7 @@ class CameraWorker(Thread):
         diff = cv2.subtract(img_current, img_previous)
         err = np.sum(diff ** 2)
         mse = err / (float(h * w))
-        if mse < 20:
+        if mse > 30:
             return True
         else:
             return False

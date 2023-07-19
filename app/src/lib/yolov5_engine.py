@@ -7,7 +7,7 @@ import numpy as np
 from numba import cuda
 import tensorrt as trt
 from lib import constants
-
+# import constants
 
 class YOLOv5_Engine(object):
     ENGINE_NAME = 'yolov5.engine'
@@ -280,7 +280,7 @@ class YOLOv5_Engine(object):
 if __name__ == '__main__':
     path = './yolov5s-simple.onnx'
     yolo_engine = YOLOv5_Engine(onnx_model_path=path)
-    image_path = "/home/user/src/debug/image.jpg"
+    image_path = "/home/user/parking_zoning/dev/2036.jpg"
     img = cv2.imread(image_path)
     output = yolo_engine.detect(img)
     boxes, confs, classes = yolo_engine.post_process(output)
@@ -292,9 +292,9 @@ if __name__ == '__main__':
     rx = img.shape[1] / inference_img_w
     ry = img.shape[0] / inference_img_h
 
-    mask = classes == 2
-    boxes = boxes[mask]
-    confs = confs[mask]
+    # mask = classes == 2
+    # boxes = boxes[mask]
+    # confs = confs[mask]
 
     mask = confs >= threshold
     mask = mask.reshape(-1)

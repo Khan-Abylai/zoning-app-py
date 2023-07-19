@@ -42,11 +42,13 @@ class RecognizerEngine(object):
         self.execution_context = self.engine.create_execution_context()
 
     def __create_engine(self, weights):
-        with trt.Builder(self.trt_logger) as builder, builder.create_network() as network:
-
-            input_layer = network.add_input('data', trt.DataType.FLOAT, (constants.IMG_C,
-                                                                         constants.RECOGNIZER_IMAGE_H,
-                                                                         constants.RECOGNIZER_IMAGE_W))
+        with trt.Builder(
+                self.trt_logger) as builder, builder.create_network() as network, builder.create_builder_config() as builder_config:
+            if builder.platform_has_fast_fp16 and self.use_fp_16:
+                print("fp 16 are using")
+                builder_config.set_flag(trt.BuilderFlag.FP16)
+            input_layer = network.add_input('data', trt.DataType.FLOAT, (
+                constants.IMG_C, constants.RECOGNIZER_IMAGE_H, constants.RECOGNIZER_IMAGE_W))
 
             kernel_size = (3, 3)
             stride = (1, 1)
@@ -89,10 +91,8 @@ class RecognizerEngine(object):
                     combined_scale = scale / np.sqrt(var + 1e-5)
                     combined_bias = bias - mean * combined_scale
 
-                    bn = network.add_scale(conv_layer.get_output(0), trt.ScaleMode.CHANNEL,
-                                           combined_bias,
-                                           combined_scale,
-                                           np.ones_like(combined_bias))
+                    bn = network.add_scale(conv_layer.get_output(0), trt.ScaleMode.CHANNEL, combined_bias,
+                                           combined_scale, np.ones_like(combined_bias))
 
                     activation = network.add_activation(bn.get_output(0), trt.ActivationType.RELU)
                     prev_layer = activation.get_output(0)
@@ -108,12 +108,8 @@ class RecognizerEngine(object):
             embedding_weights = weights[index:index + embedding_shape[0] * embedding_shape[1]]
             index += embedding_shape[0] * embedding_shape[1]
             embedding = network.add_constant(embedding_shape, embedding_weights)
-            matrix_multiplication = network.add_matrix_multiply(
-                shuffle.get_output(0),
-                trt.MatrixOperation.NONE,
-                embedding.get_output(0),
-                trt.MatrixOperation.TRANSPOSE
-            )
+            matrix_multiplication = network.add_matrix_multiply(shuffle.get_output(0), trt.MatrixOperation.NONE,
+                                                                embedding.get_output(0), trt.MatrixOperation.TRANSPOSE)
 
             embedding_bias_shape = (1, self.HIDDEN_SIZE)
             embedding_bias_weights = weights[index:index + embedding_bias_shape[1]]
@@ -124,8 +120,8 @@ class RecognizerEngine(object):
             activation = network.add_activation(add_bias.get_output(0), trt.ActivationType.RELU)
             lstm_input_size = self.HIDDEN_SIZE
 
-            lstm = network.add_rnn_v2(activation.get_output(0),
-                                      1, self.HIDDEN_SIZE, self.SEQUENCE_SIZE, trt.RNNOperation.LSTM)
+            lstm = network.add_rnn_v2(activation.get_output(0), 1, self.HIDDEN_SIZE, self.SEQUENCE_SIZE,
+                                      trt.RNNOperation.LSTM)
 
             gates = [trt.RNNGateType.INPUT, trt.RNNGateType.FORGET, trt.RNNGateType.CELL, trt.RNNGateType.OUTPUT]
 
@@ -141,27 +137,19 @@ class RecognizerEngine(object):
             hidden_2_2 = lstm_input_size * self.HIDDEN_SIZE
 
             for i in range(len(gates)):
-                lstm.set_weights_for_gate(0, gates[i], True,
-                                          input_weights[i * hidden_2_2:i * hidden_2_2 + hidden_2_2])
-                lstm.set_weights_for_gate(0, gates[i], False,
-                                          rec_weights[i * hidden_2:i * hidden_2 + hidden_2])
+                lstm.set_weights_for_gate(0, gates[i], True, input_weights[i * hidden_2_2:i * hidden_2_2 + hidden_2_2])
+                lstm.set_weights_for_gate(0, gates[i], False, rec_weights[i * hidden_2:i * hidden_2 + hidden_2])
                 lstm.set_bias_for_gate(0, gates[i], True,
                                        input_bias[i * self.HIDDEN_SIZE:i * self.HIDDEN_SIZE + self.HIDDEN_SIZE])
                 lstm.set_bias_for_gate(0, gates[i], False,
                                        rec_bias[i * self.HIDDEN_SIZE:i * self.HIDDEN_SIZE + self.HIDDEN_SIZE])
-
-            ### LAST LINEAR LAYER
             embedding_shape = (self.ALPHABET_SIZE, self.HIDDEN_SIZE)
             embedding_weights = weights[index:index + embedding_shape[0] * embedding_shape[1]]
             index += embedding_shape[0] * embedding_shape[1]
 
             embedding = network.add_constant(embedding_shape, embedding_weights)
-            matrix_multiplication = network.add_matrix_multiply(
-                lstm.get_output(0),
-                trt.MatrixOperation.NONE,
-                embedding.get_output(0),
-                trt.MatrixOperation.TRANSPOSE
-            )
+            matrix_multiplication = network.add_matrix_multiply(lstm.get_output(0), trt.MatrixOperation.NONE,
+                                                                embedding.get_output(0), trt.MatrixOperation.TRANSPOSE)
 
             embedding_bias_shape = (1, self.ALPHABET_SIZE)
             embedding_bias_weights = weights[index:index + embedding_bias_shape[1]]
@@ -175,9 +163,10 @@ class RecognizerEngine(object):
             softmax = network.add_ragged_softmax(add_bias.get_output(0), dimensions)
 
             builder.max_batch_size = self.max_batch_size
-            builder.max_workspace_size = 1 << 30
+            builder_config.max_workspace_size = 1 << 30
             network.mark_output(softmax.get_output(0))
-            return builder.build_cuda_engine(network)
+            engine = builder.build_engine(network, builder_config)
+            return engine
 
     def predict(self, imgs):
         cuda_stream = cuda.stream()

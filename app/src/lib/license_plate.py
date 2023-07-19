@@ -28,6 +28,7 @@ class LicensePlate(object):
         self.__snapshot_id = None
         self.__prob = None
         self.__car_box = None
+        self.__blue_badge = False
 
     def get_car_bbox(self):
         return self.__car_box
@@ -120,3 +121,9 @@ class LicensePlate(object):
             plate_imgs.append(lp_img)
         return np.ascontiguousarray(np.stack(plate_imgs).astype(np.float32).transpose(
             constants.RECOGNIZER_IMG_CONFIGURATION) / constants.PIXEL_MAX_VALUE), self.is_squared()
+
+    def set_blue_badge(self, blue_badge):
+        self.__blue_badge = blue_badge
+
+    def get_blue_badge(self):
+        return self.__blue_badge

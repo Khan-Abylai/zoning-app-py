@@ -11,6 +11,7 @@ from lib import constants
 from lib.camera_worker import CameraWorker
 from lib.config import Config
 from lib.detector_engine import DetectionEngine
+from lib.badge_detector_engine import BadgeDetectionEngine
 from lib.frame import FrameData
 from lib.myLogger import myLogger
 from lib.recognizer_engine import RecognizerEngine
@@ -18,6 +19,8 @@ from lib.template_matching import TemplateMatching
 from lib.yolov5_engine import YOLOv5_Engine
 from shapely.geometry import Polygon as shapely_poly
 from lib.SimpleQueue import SimpleQueue
+# from lib.car_bbox_detection import CarDetectionEngine
+from lib.yolo5_custom_engine import CarDetectionEngine
 import base64
 from PIL import Image
 
@@ -38,11 +41,15 @@ class App(object):
     def __init__(self, config_file):
         self.config = Config(config_file=config_file)
         logger.info("Loading Detection Engine")
-        self.detection_engine = DetectionEngine('detection_weights_cvt.np')
+        self.detection_engine = DetectionEngine('detector_weights_uk.np', create_engine=True)
+        logger.info("Loading Badge Detection Engine")
+        self.badge_detection_engine = BadgeDetectionEngine('badge_detection.pt')
         logger.info("Loading Recognizer Engine")
-        self.recognizer_engine = RecognizerEngine('recognizer_weights.np')
-        logger.info("Loading YOLOv5 Engine")
-        self.yolov5_engine = YOLOv5_Engine('yolov5s-simple.onnx')
+        self.recognizer_engine = RecognizerEngine('recognizer_weights_uk.np', create_engine=True)
+        # logger.info("Loading YOLOv5 Engine")
+        # self.yolov5_engine = YOLOv5_Engine('yolov5s-simple.onnx')
+        logger.info("Loading Car Bbox Detection Engine")
+        self.car_bbox_engine = CarDetectionEngine('vehicle.pt')
         self.workers_dict = {}
         self.template_matcher = TemplateMatching()
         self.queue = SimpleQueue("/home/user/parking_zoning/dev/config.json")
@@ -86,16 +93,18 @@ class App(object):
         lp2slot = {}
         lpinslot = []
         lpdouble = {}
+        lpbadge = {}
         success, encoded_image = cv2.imencode('.png', image)
         encoded_image = encoded_image.tobytes()
         encoded_image = base64.b64encode(encoded_image)
         encoded_image = str(encoded_image)
         encoded_image = encoded_image[2:-1]
-        f = open("/home/user/parking_zoning/dev/test.txt", "w")
-        f.write(encoded_image)
-        f.close()
+        # f = open("/home/user/parking_zoning/dev/test.txt", "w")
+        # f.write(encoded_image)
+        # f.close()
         for lp in license_plates:
             llp = lp.get_car_bbox()
+            lpbadge[lp] = lp.get_blue_badge()
             for slot in slots:
                 if llp is None:
                     continue
@@ -126,7 +135,7 @@ class App(object):
                 elif iou > 0.1 and lp.get_plate_label() in lpinslot:
                     # if lp.get_plate_label()
                     lpdouble[slot.get_slot_id()] = lp.get_plate_label()
-        return lp2slot, lpdouble, encoded_image
+        return lp2slot, lpdouble, encoded_image, lpbadge
 
     def lp2slot_projection(self, license_plates, slots, img, camera_ip, facility_id):
         lp2slot = {}
@@ -221,22 +230,26 @@ class App(object):
                                                facility_id=worker.get_facility_id())
                         images = frame_data.get_images()
                         snapshot_ids = frame_data.get_snapshot_ids()
+                        img = None
                         for image, snapshot_id in zip(images, snapshot_ids):
-                            prediction = self.detection_engine.make_prediction(image=image,
+                            img = Image.open(image)
+                            prediction = self.detection_engine.make_prediction(image=cv2.imread(image),
                                                                                camera_ip=frame_data.get_camera_ip(),
                                                                                object_id=frame_data.get_facility_id())
 
-                            car_bboxes = self.yolov5_engine.make_prediction(img=image)
+                            # car_bboxes = self.yolov5_engine.make_prediction(img=image)
+                            car_bboxes = self.car_bbox_engine.make_prediction(image)
                             license_plates = self.get_license_plates(prediction, snapshot_id, car_bboxes)
+                            self.badge_detection_engine.make_prediction(img, license_plates)
                             frame_data.set_license_plate2snapshot(license_plates, snapshot_id)
                         unique_license_plates = frame_data.get_accumulated_license_plates()
-                        lp2slot = self.lp2slot_projection(unique_license_plates, frame_data.get_camera_slots(), images[0],
+                        lp2slot = self.lp2slot_projection(unique_license_plates, frame_data.get_camera_slots(), cv2.imread(images[0]),
                                                frame_data.get_camera_ip(), frame_data.get_facility_id())
                         package = {"facility_id": worker.get_facility_id(), "camera_ip": ip, "lp2slot": lp2slot}
 
-                        lp2slot, double_space, snap = self.lp2slot(unique_license_plates, frame_data.get_camera_slots(), images[0])
-                        package = {"camera_ip": ip, "lp2slot": lp2slot, "double_spaced": double_space, "image": snap}
-                        # package = {"camera_ip": ip, "lp2slot": lp2slot, "double_spaced": double_space}
-                        # print(package)
+                        lp2slot, double_space, snap, lpbadge = self.lp2slot(unique_license_plates, frame_data.get_camera_slots(), cv2.imread(images[0]))
+                        # package = {"camera_ip": ip, "lp2slot": lp2slot, "double_spaced": double_space, "blue_badges": lpbadge, "image": snap}
+                        package = {"camera_ip": ip, "lp2slot": lp2slot, "double_spaced": double_space, "blue_badges": lpbadge}
+                        print(package)
                         # self.queue.enqueue(package)
                         frame_data.clean()

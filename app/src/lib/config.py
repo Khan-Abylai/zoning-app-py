@@ -57,6 +57,7 @@ class Camera(object):
                 slot = Slot(parking_slot)
                 self.__parking_slots.append(slot)
         self.__snapshot_postfix = '/cgi-bin/snapshot.cgi'
+        # self.__snapshot_postfix = '/LAPI/V1.0/Channels/0/Media/Video/Streams/0/Snapshot'
 
     def get_snapshot_url(self):
         return 'http://' + self.__ip + self.__snapshot_postfix

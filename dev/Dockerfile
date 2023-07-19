@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/tensorrt:20.09-py3
+FROM nvcr.io/nvidia/tensorrt:21.12-py3
 
 ENV TZ=Asia/Almaty
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -21,7 +21,7 @@ locales-all \
 dos2unix \
 rsync \
 tar \
-python \
+python3.8 \
 python3-dev \
 python3-pip \
 ffmpeg libsm6 libxext6 \
@@ -44,8 +44,10 @@ RUN ( \
   ) > /etc/ssh/sshd_config_test_clion \
   && mkdir /run/sshd
 
-RUN curl https://bootstrap.pypa.io/pip/3.6/get-pip.py -o get-pip.py && python3 get-pip.py --force-reinstall
-RUN sudo pip3 install --no-cache-dir setuptools && pip3 install --no-cache-dir opencv-python==4.6.0.66 tqdm llvmlite numba scipy scikit-build numpy scipy imgaug scikit-image scikit-learn albumentations jupyterlab tqdm matplotlib pandas nanoid
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3.8 get-pip.py --force-reinstall
+RUN sudo pip3 install --no-cache-dir setuptools && pip3 install --no-cache-dir opencv-python tqdm llvmlite  \
+    numba scipy scikit-build numpy scipy imgaug scikit-image scikit-learn albumentations jupyterlab tqdm matplotlib  \
+    pandas nanoid psutil torchvision torch seaborn ultralytics
 
 # Minimize image size
 RUN (apt-get autoremove -y; \
